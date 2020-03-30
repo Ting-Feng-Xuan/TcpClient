@@ -29,6 +29,8 @@ using namespace std;
 class TcpClient
 {
 	SOCKET _sock;
+	char RecvBuf[RECV_BUFF_SIZE];
+	char MsgBuf[MSG_BUFF_SIZE];
 public:
 	TcpClient()
 	{
@@ -130,24 +132,43 @@ public:
 	/* receive data */
 	int RecvData()
 	{
-		char RecvBuf[1024] = {};
+		
 		if (IsConnecting())
 		{
-			int ret = (int)recv(_sock, RecvBuf, sizeof(DataHeader), 0);
-			DataHeader *header = (DataHeader *)RecvBuf;
-			if (ret <= 0)
+			int _lastPos = 0;
+			int RecvLen = (int)recv(_sock, RecvBuf, RECV_BUFF_SIZE, 0);
+			
+			if (RecvLen <= 0)
 			{
 				cout << "error:server clsoed!" << endl;
 				return -1;
 			}
-			recv(_sock, RecvBuf + sizeof(DataHeader), header->datalen - sizeof(DataHeader), 0);
-
-			HandleMessage(_sock, header);
+			/* copy message */
+			memcpy(MsgBuf + _lastPos, RecvBuf, RecvLen);
+			_lastPos += RecvLen;
+			while (_lastPos >= sizeof(DataHeader))
+			{
+				DataHeader *header = (DataHeader *)MsgBuf;
+				if (_lastPos >= header->datalen)
+				{
+					/* cache message length */
+					int nSize = _lastPos - header->datalen;
+					/* response net message */
+					HandleMessage(header);
+					/* reflush cache message buf */
+					memcpy(MsgBuf, MsgBuf + header->datalen, nSize);
+					
+				}
+				else
+				{
+					break;
+				}
+			}
 		}
 		return 0;
 	}
 	/* handle message */
-	virtual void HandleMessage(SOCKET _sock, DataHeader * header)
+	virtual void HandleMessage(DataHeader * header)
 	{
 		switch (header->cmd)
 		{

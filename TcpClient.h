@@ -2,7 +2,8 @@
 #define __TCP_CLIENT_H__
 
 #define DATA_MAX	128
-
+#define	RECV_BUFF_SIZE	10240
+#define MSG_BUFF_SIZE	102400
 #define SOCKE_ERROR (-1)
 #include<string.h>
 enum MessageCmd
